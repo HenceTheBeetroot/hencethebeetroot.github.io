@@ -1,13 +1,17 @@
-<!DOCTYPE html>
-<html>
- <meta>
-     <link rel="stylesheet" type="text/css" href="style.css">
- </meta>
-<head>
-    <title>[The title of Your Acrance Portal here]</title>
-</head>
-<body>
-    <h1>[Your welcoming message here]</h1>
-    <p>[Write something about your portal here]</p>
-</body>
-</html>
+ <!DOCTYPE html>
+ <html>
+ <head>
+     <title><The title of Your Acrance Portal here></title>
+ </head>
+ <body>
+     <h1>[Your welcoming message here]</h1>
+     <p>[Write something about your portal here]</p>
+     <button onclick="castSpell()">Click to Cast a Spell!</button>
+     <p id="spellResult"></p>
+     <script>
+     function castSpell() {
+         document.getElementById("spellResult").innerText = "Your spell has been cast successfully!";
+     }
+     </script>
+ </body>
+ </html>
