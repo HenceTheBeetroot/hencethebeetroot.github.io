@@ -1,17 +1,21 @@
  <!DOCTYPE html>
  <html>
- <head>
-     <title><The title of Your Acrance Portal here></title>
- </head>
- <body>
-     <h1>[Your welcoming message here]</h1>
-     <p>[Write something about your portal here]</p>
-     <button onclick="castSpell()">Click to Cast a Spell!</button>
-     <p id="spellResult"></p>
-     <script>
-     function castSpell() {
-         document.getElementById("spellResult").innerText = "Your spell has been cast successfully!";
-     }
-     </script>
+    <head>
+        <title>The Red Tower</title>
+        <link rel="icon" type="image/x-icon" href="/beetroot.webp">
+    </head>
+    <body>
+        <h1>The Red Tower</h1>
+        <p>(yeah that sounds cool and professional totally :D)</p>
+        <button onclick="castSpell()">Click to cast "Legibus Apparatus"!</button>
+        <p id="spellResult"></p>
+        <script>
+        function castSpell() {
+            document.getElementById("spellResult").innerText = "Your spell has been cast successfully!";
+        }
+        </script>
+        <button onclick="document.location='scrolls/index.html'">Scrolls</button>
+        <br><br>
+        <button onclick="document.location='quests/index.html'">Quests</button>
  </body>
  </html>
