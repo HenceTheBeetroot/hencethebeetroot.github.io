@@ -1,0 +1,31 @@
+ <!DOCTYPE html>
+ <html>
+    <script>
+        window.onload = function() {
+            var pages = [
+                "1|One of the many Red Towers scattered throughout the land, forming an interconnected network capable of advanced computation.</em> An introduction to creating art through WebGPU.",
+            ];
+            for (page of pages) {
+                const id = page.split("|")[0];
+                const desc = page.split("|")[1];
+
+                const scroll_button = document.createElement("button"); // Create button links
+                scroll_button.setAttribute("onclick", "document.location='../assignment_handler.html?quest=" + id + "'");
+                scroll_button.innerHTML = "Quest " + id;
+                document.body.appendChild(scroll_button);
+
+                const subtext = document.createElement("p"); // Create descriptions
+                subtext.innerHTML = desc
+                document.body.appendChild(subtext)
+            }
+        };
+    </script>
+    <head>
+        <title>Quests [The Red Tower]</title>
+        <link rel="icon" type="image/x-icon" href="/beetroot.webp">
+        <link rel="stylesheet" type="text/css" href="/default.css">
+    </head>
+    <body>
+        <h1>Quests</h1>
+    </body>
+ </html>

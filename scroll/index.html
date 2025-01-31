@@ -1,0 +1,32 @@
+ <!DOCTYPE html>
+ <html>
+    <script>
+        window.onload = function() {
+            var pages = [
+                "2|A basic function to introduce us to drawing shapes. Draws a triangle to the screen.",
+                "3|Undefined.",
+            ];
+            for (page of pages) {
+                const id = page.split("|")[0];
+                const desc = page.split("|")[1];
+
+                const scroll_button = document.createElement("button"); // Create button links
+                scroll_button.setAttribute("onclick", "document.location='../assignment_handler.html?scroll=" + id + "'");
+                scroll_button.innerHTML = "Scroll " + id;
+                document.body.appendChild(scroll_button);
+
+                const subtext = document.createElement("p"); // Create descriptions
+                subtext.innerHTML = desc
+                document.body.appendChild(subtext)
+            }
+        };
+    </script>
+    <head>
+        <title>Scrolls [The Red Tower]</title>
+        <link rel="icon" type="image/x-icon" href="/beetroot.webp">
+        <link rel="stylesheet" type="text/css" href="/default.css">
+    </head>
+    <body>
+        <h1>Scrolls</h1>
+    </body>
+ </html>

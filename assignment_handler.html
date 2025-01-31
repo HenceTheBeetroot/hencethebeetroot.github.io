@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<!-- Comments in HTML is enclosed by these -->
+<script>
+  window.onload = function() {
+    var key_args = [] // Process URL arguments into dictionary
+    var raw_args = window.location.href.split('?')[1].split("&");
+    for (arg of raw_args) {
+      var raw_key = arg.split('=')[0];
+      var raw_val = arg.split('=')[1];
+      key_args.push({
+        key: raw_key,
+        val: raw_val,
+      })
+    }
+
+    for (pair of key_args) { // Loads appropriate scroll or quest
+      if (["scroll", "quest"].includes(pair.key)) {
+        var page_name = pair.key + "/" + pair.val + "/webpage.html"
+        fetch(page_name).then(function(response) { // Allows folder to override auto-generated webpage with custom one
+          if (response.ok) { // this whole thing is just to check if this page exists -_- (thanks javascript)
+            location.href = page_name
+          } else {
+            console.log("^ No worries! This is intended <3");
+            document.getElementById("window_title").innerHTML = pair.key.charAt(0).toUpperCase() + pair.key.slice(1) + " " + pair.val;
+            document.getElementById("script_load").setAttribute("src", page_name.replace(".html", ".js"));
+          }
+        })
+      }
+    }
+  }
+</script>
+<html>
+<head>
+  <title id="window_title"></title>
+  <!-- Note that some header tags don't need a close tag. They don't have content, called "void" tags. meta is one of them. -->
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <!-- Import CSS uisng the link tag -->
+  <link rel="stylesheet" type="text/css" href="/default.css">
+  <!-- Webpage icon -->
+  <link rel="icon" type="image/x-icon" href="/beetroot.webp">
+  <!-- Include the web app script -->
+  <script id="script_load" type="module"></script>
+</head>
+<body></body>
+</html>
