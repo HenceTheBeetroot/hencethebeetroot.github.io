@@ -34,51 +34,99 @@ import DemoTreeObject from '/lib/DSViz/DemoTreeObject.js'
 import PGA2D from '/lib/Math/PGA2D.js'
 
 async function init() {
+  const update_ms = 25
+  const RPS = Math.PI / 500 * update_ms; // 1 RPS
+  
   // Create a canvas tag
-  const canvasTag = document.createElement('canvas');
+  const canvasTag = document.createElement('canvas', innerWidth = 800, innerHeight = 800);
   canvasTag.id = "renderCanvas";
   document.body.appendChild(canvasTag);
   // Create a 2d animated renderer
   const renderer = new FilteredRenderer(canvasTag);
   await renderer.init();
   // Create a background
-  await renderer.appendSceneObject(new Standard2DFullScreenObject(renderer._device, renderer._canvasFormat, "/assets/bucknell.jpg"));
-  // Create a triangle geometry with color information at each vertex
-  var vertices1 = new Float32Array([
-     // x, y, r, g, b, a
-     0, 0.5, 1, 0, 0, 1,
-     -0.5, 0, 0, 1, 0, 1,
-     0.5,  0, 0, 0, 1, 1,
-  ]);
-  var pose = [1, 0, 0, 0, 1, 1];
-  pose = new Float32Array(pose); // need to covert to Float32Array for uploading to GPU with fixed known size
-  await renderer.appendSceneObject(new Standard2DPGAPosedVertexColorObject(renderer._device, renderer._canvasFormat, vertices1, pose));
-  // Create another triangle geometry for line-strips drawing
-  var vertices2 = new Float32Array([
-     // x, y
-     0, -0.6,
-     -0.5, -0.1,
-     0.5,  -0.1,
-     0, -0.6, // loop back to the first vertex
-  ]);
-  await renderer.appendSceneObject(new LineStrip2DVertexObject(renderer._device, renderer._canvasFormat, vertices2));
-  // Add a tree to the scene
-  await renderer.appendSceneObject(new DemoTreeObject(renderer._device, renderer._canvasFormat, new Float32Array([1, 0, 0, 0, 0.5, 0.5])));
-  // run at every 100 ms
-  let angle = Math.PI / 100;
+  await renderer.appendSceneObject(new Standard2DFullScreenObject(renderer._device, renderer._canvasFormat, "/assets/space.jpg"));
+  
+  function generate_polygon(sides, radius, center = 0xFF000000, edge = 0xFF000000) {
+    /** Given a number of sides and a radius, returns a set of points representing a regular polygon made of triangles. Accepts separate ARGB hexadecimal values for center and edges, or defaults to black if unspecified. */
+    if (sides < 3) { console.error("Polygon must have at least three sides!"); }
+    if (radius < 0) { console.error("Radius must be nonnegative!"); }
+    const angle = (Math.PI / 2) * (1 - (2 / sides));
+    var values = [];
+    
+    const bc = (center % 0x100) / 0xFF
+    const gc = (Math.floor(center / 0x100) % 0x100) / 0xFF
+    const rc = (Math.floor(center / 0x10000) % 0x100) / 0xFF
+    const ac = (Math.floor(center / 0x1000000) % 0x100) / 0xFF
+
+    const be = (edge % 0x100) / 0xFF
+    const ge = (Math.floor(edge / 0x100) % 0x100) / 0xFF
+    const re = (Math.floor(edge / 0x10000) % 0x100) / 0xFF
+    const ae = (Math.floor(edge / 0x1000000) % 0x100) / 0xFF
+    
+    for (var i = 0; i < sides; i++) {
+      var x1 = 1 / Math.tan(angle); // Define base of triangle
+      var y = 1 / Math.sqrt(Math.pow(x1, 2) + 1); // Normalize variable (this comes first because former val of x is not saved, but former val of y is known to be one)
+      x1 *= y // (conveniently, y can be used to normalize x since it was 1 before)
+      var x2 = -x1; // Duplicate and reflect
+      var to_rotate = i * 2 * Math.PI / sides;
+      var x1_f = x1 * Math.cos(to_rotate) - y * Math.sin(to_rotate); // Rotate appropriately
+      var y1_f = x1 * Math.sin(to_rotate) + y * Math.cos(to_rotate);
+      var x2_f = x2 * Math.cos(to_rotate) - y * Math.sin(to_rotate); // ...and again for the other one
+      var y2_f = x2 * Math.sin(to_rotate) + y * Math.cos(to_rotate);
+      x1_f *= radius; // Extend points to radius
+      x2_f *= radius;
+      y1_f *= radius;
+      y2_f *= radius;
+      
+      values.push(
+        0, 0, rc, gc, bc, ac, // Center point
+        x1_f, y1_f, re, ge, be, ae,
+        x2_f, y2_f, re, ge, be, ae
+      ); // And just repeat that for each side!
+    }
+
+    // Finally, return results
+    return new Float32Array(values);
+  }
+
+  var objects = {
+    sun: {
+      body: generate_polygon(16, 0.25, 0xFFFFDD88, 0xFFDD9900),
+      distance: 0,
+      speed: 1
+    },
+    kiron: {
+      body: generate_polygon(16, 0.0625, 0xFFFFFFFF, 0xFF888888),
+      distance: 0.25,
+      speed: 0.25
+    },
+    odysseus: {
+      body: generate_polygon(16, 0.125, 0xFF888888, 0xFF222222),
+      distance: 0.425,
+      speed: 0.1
+    }
+  }
+  
   // use a rotor to rotate about an object around a center
   let center = [0, 0]; // set the ceter to (0, 0) - feel free to change it and see different results
   
-  let dm = PGA2D.normaliozeMotor(PGA2D.createRotor(angle, center[0], center[1]));
+  for (const [name, data] of Object.entries(objects)) {
+    console.log(name, data);
+    data.pose = new Float32Array([1, 0, data.distance, 0, 1, 1]); // need to covert to Float32Array for uploading to GPU with fixed known size
+    await renderer.appendSceneObject(new Standard2DPGAPosedVertexColorObject(renderer._device, renderer._canvasFormat, data.body, data.pose));
+    data.angle = RPS * data.speed;
+    data.dm = PGA2D.normaliozeMotor(PGA2D.createRotor(data.angle, center[0], center[1]));
+  };
+
   setInterval(() => { 
     renderer.render();
-    // update the triangle pose by multiplying the delta motor to the current pose
-    let newmotor = PGA2D.normaliozeMotor(PGA2D.geometricProduct(dm, [pose[0], pose[1], pose[2], pose[3]]));
-    pose[0] = newmotor[0];
-    pose[1] = newmotor[1];
-    pose[2] = newmotor[2];
-    pose[3] = newmotor[3];
-  }, 100); // call every 100 ms
+    // update the pose by multiplying the delta motor to the current pose
+    for (const [name, data] of Object.entries(objects)) {
+      data.motor = PGA2D.normaliozeMotor(PGA2D.geometricProduct(data.dm, [data.pose[0], data.pose[1], data.pose[2], data.pose[3]]));
+      for (var i = 0; i < data.motor.length; i++) { data.pose[i] = data.motor[i]; }
+    }
+  }, update_ms);
   return renderer;
 }
 
