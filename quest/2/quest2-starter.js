@@ -35,7 +35,6 @@ import PGA2D from '/lib/Math/PGA2D.js'
 
 async function init() {
   const update_ms = 25
-  const RPS = Math.PI / 500 * update_ms; // 1 RPS
   
   // Create a canvas tag
   const canvasTag = document.createElement('canvas', innerWidth = 800, innerHeight = 800);
@@ -89,33 +88,105 @@ async function init() {
     // Finally, return results
     return new Float32Array(values);
   }
+  
+  // The objects used in testing, before the switch to a solar system representation. Will live on in our hearts.
+  // var object = {
+  //   sun: {
+  //     body: generate_polygon(16, 0.125, 0xFFFFDD88, 0xFFDD9900),
+  //     distance: 0,
+  //     speed: 1
+  //   },
+  //   kiron: {
+  //     body: generate_polygon(16, 0.0625, 0xFFFFFFFF, 0xFF888888),
+  //     distance: 0.4,
+  //     speed: 0.2
+  //   },
+  //   odysseus: {
+  //     body: generate_polygon(16, 0.125, 0xFF888888, 0xFF222222),
+  //     distance: 0.75,
+  //     speed: 0.1
+  //   },
+  //   moon_test: {
+  //     body: generate_polygon(16, 0.03125, 0xFF00FFFF, 0xFF0088DD),
+  //     distance: 0.1,
+  //     speed: 2,
+  //     parent: "kiron"
+  //   }
+  // }
 
+  // Planetary orbit ratios from https://nssdc.gsfc.nasa.gov/planetary/factsheet/planet_table_ratio.html
   var object = {
     sun: {
-      body: generate_polygon(16, 0.125, 0xFFFFDD88, 0xFFDD9900),
+      body: generate_polygon(16, 0.07, 0xFFFFDD88, 0xFFDD9900),
       distance: 0,
+      speed: 0
+    },
+    mercury: {
+      body: generate_polygon(16, 0.02, 0xFF888888, 0xFF444444),
+      distance: 0.1,
+      speed: 1 / 0.241
+    },
+    venus: {
+      body: generate_polygon(16, 0.03, 0xE9B311, 0xB16A18),
+      distance: 0.15,
+      speed: 1 / 0.615
+    },
+    earth: {
+      body: generate_polygon(16, 0.03, 0xFF50D3C2, 0xFF269C72),
+      distance: 0.25,
       speed: 1
     },
-    kiron: {
-      body: generate_polygon(16, 0.0625, 0xFFFFFFFF, 0xFF888888),
-      distance: 0.4,
-      speed: 0.2
+    moon: {
+      body: generate_polygon(16, 0.01, 0xFF888888, 0xFF666666),
+      distance: 0.05,
+      speed: 1 / 0.0748,
+      parent: "earth"
     },
-    odysseus: {
-      body: generate_polygon(16, 0.125, 0xFF888888, 0xFF222222),
-      distance: 0.75,
-      speed: 0.1
+    mars: {
+      body: generate_polygon(16, 0.02, 0xFFA14031, 0XFF6A2F2E),
+      distance: 0.35,
+      speed: 1 / 1.88
     },
-    moon_test: {
-      body: generate_polygon(16, 0.03125, 0xFF00FFFF, 0xFF0088DD),
-      distance: 0.1,
-      speed: 2,
-      parent: "kiron"
-    }
+    phobos: {
+      body: generate_polygon(16, 0.01, 0xFF888888, 0xFF666666),
+      distance: 0.04,
+      speed: 1 / 0.1,
+      parent: "mars"
+    },
+    deimos: {
+      body: generate_polygon(16, 0.0075, 0xFFCAB677, 0xFFA18C59),
+      distance: 0.05,
+      speed: 1 / 0.13,
+      parent: "mars"
+    },
+    jupiter: {
+      body: generate_polygon(16, 0.05, 0xFFDE913E, 0xFFA74926),
+      distance: 0.5,
+      speed: 1 / 11.9
+    },
+    saturn: {
+      body: generate_polygon(16, 0.04, 0xFFE9B226, 0xFFA86C0D),
+      distance: 0.6,
+      speed: 1 / 29.4
+    },
+    uranus: {
+      body: generate_polygon(16, 0.035, 0xFF00FFFF, 0xFF0088DD),
+      distance: 0.8,
+      speed: 1 / 83.7
+    },
+    neptune: {
+      body: generate_polygon(16, 0.035, 0xFF531FBA, 0xFF472884),
+      distance: 1,
+      speed: 1 / 163.7
+    },
   }
   
   // use a rotor to rotate about an object around a center
-  let perspective_angle = (Math.PI / 2) * 0.75
+  const perspective_angle = (Math.PI / 2) * 0.75
+  
+  const mod = 1;
+
+  const RPS = Math.PI / 500 * update_ms * mod; // 1 RPS
 
   for (const [name, data] of Object.entries(object)) {
     console.log(name, data);
