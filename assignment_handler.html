@@ -18,7 +18,12 @@
         var page_name = pair.key + "/" + pair.val + "/webpage.html"
         fetch(page_name).then(function(response) { // Allows folder to override auto-generated webpage with custom one
           if (response.ok) { // this whole thing is just to check if this page exists -_- (thanks javascript)
-            location.href = page_name
+            document.getElementById("warn").innerHTML = "Redirecting..."
+            if (window.performance && window.performance.navigation.type == window.performance.navigation.TYPE_BACK_FORWARD) {
+              history.back(); // credit to https://stackoverflow.com/a/45857949 for how to detect back button pressed so that redirect page doesn't trap user
+            } else {
+              location.href = page_name;
+            }
           } else {
             console.log("^ No worries! This is intended <3");
             document.getElementById("window_title").innerHTML = pair.key.charAt(0).toUpperCase() + pair.key.slice(1) + " " + pair.val;
@@ -31,7 +36,7 @@
 </script>
 <html>
 <head>
-  <title id="window_title"></title>
+  <title id="window_title">Auto-redirect</title>
   <!-- Note that some header tags don't need a close tag. They don't have content, called "void" tags. meta is one of them. -->
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta charset="utf-8">
@@ -43,5 +48,7 @@
   <!-- Include the web app script -->
   <script id="script_load" type="module"></script>
 </head>
-<body></body>
+<body>
+  <label id="warn"></label>
+</body>
 </html>
