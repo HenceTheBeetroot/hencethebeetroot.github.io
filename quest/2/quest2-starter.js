@@ -139,7 +139,7 @@ async function init() {
       data.angle += data.speed * RPS;
       data.angle %= 2 * Math.PI;
 
-      data.coordinates = [Math.cos(data.angle), Math.sin(data.angle)]
+      data.coordinates = [Math.cos(data.angle), Math.sin(data.angle)];
       
       data.coordinates[0] *= data.distance;
       data.coordinates[1] *= data.distance;
@@ -151,7 +151,6 @@ async function init() {
         data.coordinates[1] += parent.coordinates[1];
       }
 
-      let center = global_center;
       data.motor = PGA2D.createTranslator(data.coordinates[0], data.coordinates[1]);
       for (let i = 0; i < data.motor.length; i++) {
         data.pose[i] = data.motor[i];
