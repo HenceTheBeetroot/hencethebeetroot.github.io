@@ -92,7 +92,7 @@ async function init() {
 
   var object = {
     sun: {
-      body: generate_polygon(16, 0.25, 0xFFFFDD88, 0xFFDD9900),
+      body: generate_polygon(16, 0.125, 0xFFFFDD88, 0xFFDD9900),
       distance: 0,
       speed: 1
     },
@@ -109,14 +109,14 @@ async function init() {
     moon_test: {
       body: generate_polygon(16, 0.03125, 0xFF00FFFF, 0xFF0088DD),
       distance: 0.1,
-      speed: 1,
+      speed: 2,
       parent: "kiron"
     }
   }
   
   // use a rotor to rotate about an object around a center
-  let global_center = [0, 0]; // set the ceter to (0, 0) - feel free to change it and see different results
-  
+  let perspective_angle = (Math.PI / 2) * 0.75
+
   for (const [name, data] of Object.entries(object)) {
     console.log(name, data);
     data.angle = 0;
@@ -124,12 +124,13 @@ async function init() {
     data.pose = [1, 0, 0, -data.distance, 1, 1];
     data.pose = new Float32Array(data.pose); // need to covert to Float32Array for uploading to GPU with fixed known size
     
-    await renderer.appendSceneObject(new Standard2DPGAPosedVertexColorObject(renderer._device, renderer._canvasFormat, data.body, data.pose));
+    let sceneObject = new Standard2DPGAPosedVertexColorObject(renderer._device, renderer._canvasFormat, data.body, data.pose, name)
+    await renderer.appendSceneObject(sceneObject);
   };
   
   setInterval(() => { 
-    renderer.render();
     // update the pose by multiplying the delta motor to the current pose
+    
     for (const [name, data] of Object.entries(object)) {
       
       for (let i = 0; i < data.base.length; i++) {
@@ -143,6 +144,8 @@ async function init() {
       
       data.coordinates[0] *= data.distance;
       data.coordinates[1] *= data.distance;
+
+      data.coordinates[1] *= Math.cos(perspective_angle);
       
       let parent = data.parent? object[data.parent] : null;
 
@@ -156,7 +159,38 @@ async function init() {
         data.pose[i] = data.motor[i];
       }
     }
+  
+    function sort_planets(a, b) {
+      if (!b._label || !a._label) { return 0; }
+
+      let planetB = object[b._label];
+      let planetA = object[a._label];
+      
+      let planetBOffset = (Math.sin(planetB.angle) * planetB.distance);
+      let planetAOffset = (Math.sin(planetA.angle) * planetA.distance);
+      
+      let parent = null;
+      parent = planetB.parent;
+      while (parent) {
+        parent = object[parent];
+        planetBOffset += (Math.sin(parent.angle) * parent.distance);
+        parent = object[parent.parent];
+      }
+      parent = planetA.parent;
+      while (parent) {
+        parent = object[parent];
+        planetAOffset += (Math.sin(parent.angle) * parent.distance);
+        parent = object[parent.parent];
+      }
+      
+      return planetBOffset - planetAOffset;
+    }
+    
+    renderer._objects.sort(sort_planets);
+    
+    renderer.render();
   }, update_ms);
+  
   return renderer;
 }
 
