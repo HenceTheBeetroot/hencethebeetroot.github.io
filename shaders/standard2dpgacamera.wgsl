@@ -36,8 +36,6 @@ struct Pose {
 };
 
 
-@group(0) @binding(0) var<uniform> pose: Pose;
-
 fn geometricProduct(a: MultiVector, b: MultiVector) -> MultiVector {
   // ref: https://geometricalgebratutorial.com/pga/
   // eoo = 0, e00 = 1 e11 = 1
@@ -71,6 +69,9 @@ fn applyMotorToPoint(p: vec2f, m: MultiVector) -> vec2f {
   return vec2f(new_p.eo0 / new_p.e01, new_p.eo1 / new_p.e01);
 }
 
+@group(0) @binding(0) var<uniform> pose: Pose;
+@group(0) @binding(1) var<uniform> camerapose: Pose;
+
 struct VertexOutput {
   @builtin(position) position: vec4f,
   @location(0) color: vec4f,
@@ -83,7 +84,11 @@ fn vertexMain(@location(0) pos: vec2f, @location(1) color: vec4f) -> VertexOutpu
   let transformed = applyMotorToPoint(pos, pose.motor);
   // Apply scale
   let scaled = transformed * pose.scale;
-  out.position = vec4f(scaled, 0, 1); // (pos, Z, W) = (X, Y, Z, W)
+  // Apply motor
+  let transformedCamera = applyMotorToPoint(scaled, reverse(camerapose.motor));
+  // Apply scale
+  let scaledCamera = transformedCamera * camerapose.scale;
+  out.position = vec4f(scaledCamera, 0, 1); // (pos, Z, W) = (X, Y, Z, W)
   out.color = color;
   return out;
 }

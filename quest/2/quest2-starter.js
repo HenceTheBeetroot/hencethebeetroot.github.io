@@ -90,7 +90,7 @@ async function init() {
     return new Float32Array(values);
   }
 
-  var objects = {
+  var object = {
     sun: {
       body: generate_polygon(16, 0.25, 0xFFFFDD88, 0xFFDD9900),
       distance: 0,
@@ -98,33 +98,64 @@ async function init() {
     },
     kiron: {
       body: generate_polygon(16, 0.0625, 0xFFFFFFFF, 0xFF888888),
-      distance: 0.25,
-      speed: 0.25
+      distance: 0.4,
+      speed: 0.2
     },
     odysseus: {
       body: generate_polygon(16, 0.125, 0xFF888888, 0xFF222222),
-      distance: 0.425,
+      distance: 0.75,
       speed: 0.1
+    },
+    moon_test: {
+      body: generate_polygon(16, 0.03125, 0xFF00FFFF, 0xFF0088DD),
+      distance: 0.1,
+      speed: 1,
+      parent: "kiron"
     }
   }
   
   // use a rotor to rotate about an object around a center
-  let center = [0, 0]; // set the ceter to (0, 0) - feel free to change it and see different results
+  let global_center = [0, 0]; // set the ceter to (0, 0) - feel free to change it and see different results
   
-  for (const [name, data] of Object.entries(objects)) {
+  for (const [name, data] of Object.entries(object)) {
     console.log(name, data);
-    data.pose = new Float32Array([1, 0, data.distance, 0, 1, 1]); // need to covert to Float32Array for uploading to GPU with fixed known size
+    data.angle = 0;
+    data.base = [1, 0, 0, -data.distance, 1, 1];
+    data.pose = [1, 0, 0, -data.distance, 1, 1];
+    data.pose = new Float32Array(data.pose); // need to covert to Float32Array for uploading to GPU with fixed known size
+    
     await renderer.appendSceneObject(new Standard2DPGAPosedVertexColorObject(renderer._device, renderer._canvasFormat, data.body, data.pose));
-    data.angle = RPS * data.speed;
-    data.dm = PGA2D.normaliozeMotor(PGA2D.createRotor(data.angle, center[0], center[1]));
   };
-
+  
   setInterval(() => { 
     renderer.render();
     // update the pose by multiplying the delta motor to the current pose
-    for (const [name, data] of Object.entries(objects)) {
-      data.motor = PGA2D.normaliozeMotor(PGA2D.geometricProduct(data.dm, [data.pose[0], data.pose[1], data.pose[2], data.pose[3]]));
-      for (var i = 0; i < data.motor.length; i++) { data.pose[i] = data.motor[i]; }
+    for (const [name, data] of Object.entries(object)) {
+      
+      for (let i = 0; i < data.base.length; i++) {
+        data.pose[i] = data.base[i];
+      }
+
+      data.angle += data.speed * RPS;
+      data.angle %= 2 * Math.PI;
+
+      data.coordinates = [Math.cos(data.angle), Math.sin(data.angle)]
+      
+      data.coordinates[0] *= data.distance;
+      data.coordinates[1] *= data.distance;
+      
+      let parent = data.parent? object[data.parent] : null;
+
+      if (parent) {
+        data.coordinates[0] += parent.coordinates[0];
+        data.coordinates[1] += parent.coordinates[1];
+      }
+
+      let center = global_center;
+      data.motor = PGA2D.createTranslator(data.coordinates[0], data.coordinates[1]);
+      for (let i = 0; i < data.motor.length; i++) {
+        data.pose[i] = data.motor[i];
+      }
     }
   }, update_ms);
   return renderer;

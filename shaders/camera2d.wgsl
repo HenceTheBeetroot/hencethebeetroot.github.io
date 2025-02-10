@@ -29,14 +29,11 @@ struct MultiVector {
   eo1: f32
 };
 
-// struct to store 2D PGA pose
+// struct to store 2D Camera pose
 struct Pose {
   motor: MultiVector,
   scale: vec2f
 };
-
-
-@group(0) @binding(0) var<uniform> pose: Pose;
 
 fn geometricProduct(a: MultiVector, b: MultiVector) -> MultiVector {
   // ref: https://geometricalgebratutorial.com/pga/
@@ -71,24 +68,18 @@ fn applyMotorToPoint(p: vec2f, m: MultiVector) -> vec2f {
   return vec2f(new_p.eo0 / new_p.e01, new_p.eo1 / new_p.e01);
 }
 
-struct VertexOutput {
-  @builtin(position) position: vec4f,
-  @location(0) color: vec4f,
-};
+@group(0) @binding(0) var<uniform> camerapose: Pose;
 
-@vertex // this compute the scene coordinate of each input vertex and its color information
-fn vertexMain(@location(0) pos: vec2f, @location(1) color: vec4f) -> VertexOutput {
-  var out: VertexOutput;
+@vertex // this compute the scene coordinate of each input vertex
+fn vertexMain(@location(0) pos: vec2f) -> @builtin(position) vec4f {
   // Apply motor
-  let transformed = applyMotorToPoint(pos, pose.motor);
+  let transformed = applyMotorToPoint(pos, reverse(camerapose.motor));
   // Apply scale
-  let scaled = transformed * pose.scale;
-  out.position = vec4f(scaled, 0, 1); // (pos, Z, W) = (X, Y, Z, W)
-  out.color = color;
-  return out;
+  let scaled = transformed * camerapose.scale;
+  return vec4f(scaled, 0, 1); // (pos, Z, W) = (X, Y, Z, W)
 }
 
 @fragment // this compute the color of each pixel
-fn fragmentMain(@location(0) color: vec4f) -> @location(0) vec4f {
-  return color; // (R, G, B, A)
+fn fragmentMain() -> @location(0) vec4f {
+  return vec4f(238.f/255, 118.f/255, 35.f/255, 1); // (R, G, B, A)
 }
