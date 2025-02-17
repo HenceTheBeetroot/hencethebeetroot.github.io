@@ -29,14 +29,20 @@ struct Particle {
 
 // TODO 4: Write the bind group spells here using array<Particle>
 // name the binded variables particlesIn and particlesOut
-@group(0) @binding(1) var<storage> particlesIn: array<u32>;
-@group(0) @binding(2) var<storage, read_write> particlesOut: array<u32>;
+@group(0) @binding(0) var<storage> particlesIn: array<Particle>;
+@group(0) @binding(1) var<storage, read_write> particlesOut: array<Particle>;
+@group(0) @binding(2) var<storage> time: array<f32>;
 
 @vertex
 fn vertexMain(@builtin(instance_index) idx: u32, @builtin(vertex_index) vIdx: u32) -> @builtin(position) vec4f {
   // TODO 5: Revise the vertex shader to draw circle to visualize the particles
-  
-  return vec4f(0, 0, 0, 1);
+  let particle = particlesIn[idx].position;
+  let size = 0.0125;
+  let pi = 3.14159265;
+  let theta = 2. * pi / 8 * f32(vIdx);
+  let x = cos(theta) * size;
+  let y = sin(theta) * size;
+  return vec4f(vec2f(x + particle[0], y + particle[1]), 0, 1);
 }
 
 @fragment
@@ -46,12 +52,31 @@ fn fragmentMain() -> @location(0) vec4f {
 
 @compute @workgroup_size(256)
 fn computeMain(@builtin(global_invocation_id) global_id: vec3u) {
-  // TODO 6: Revise the compute shader to update the particles using the velocity
+  // Revise the compute shader to update the particles using the velocity
   let idx = global_id.x;
   
   if (idx < arrayLength(&particlesIn)) {
     particlesOut[idx] = particlesIn[idx];
-    
-    // TOOD 7: Add boundary checking and respawn the particle when it is offscreen
+    particlesOut[idx].position[0] += particlesOut[idx].velocity[0];
+    particlesOut[idx].position[1] += particlesOut[idx].velocity[1];
+
+    // Add boundary checking and respawn the particle when it is offscreen
+    //if (particlesOut[idx].position[0] > 1 || particlesOut[idx].position[0] < -1) {
+    //  particlesOut[idx].position[0] = (particlesOut[idx].position[0] + 1) % 2 - 1;
+    //}
+    //if (particlesOut[idx].position[1] > 1 || particlesOut[idx].position[1] < -1) {
+    //  particlesOut[idx].position[1] = (particlesOut[idx].position[1] + 1) % 2 - 1;
+    //}
+    if (particlesOut[idx].position[0] > 1 || particlesOut[idx].position[0] < -1 || particlesOut[idx].position[1] > 1 || particlesOut[idx].position[1] < -1) {
+      particlesOut[idx].velocity = vec2f(
+        rand(),
+        0.01
+      );
+      particlesOut[idx].position = vec2f(0, -1);
+    }
   }
+}
+
+fn rand() -> f32 {
+  return fract(sin(time[0]) * 43758.5453);
 }
