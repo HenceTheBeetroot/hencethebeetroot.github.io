@@ -40,6 +40,7 @@ async function init() {
   await renderer.init();
   const particles = new ParticleSystemObject(renderer._device, renderer._canvasFormat);
   await renderer.appendSceneObject(particles); //TODO this is breaking for some reason
+  console.log("appended scene object");
   let fps = '??';
   var fpsText = new StandardTextObject('fps: ' + fps);
   

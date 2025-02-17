@@ -23,12 +23,14 @@
 
 // TODO 3: Define a struct to store a particle
 struct Particle {
-  
+  position: vec2f,
+  velocity: vec2f
 }
 
 // TODO 4: Write the bind group spells here using array<Particle>
 // name the binded variables particlesIn and particlesOut
-
+@group(0) @binding(1) var<storage> particlesIn: array<u32>;
+@group(0) @binding(2) var<storage, read_write> particlesOut: array<u32>;
 
 @vertex
 fn vertexMain(@builtin(instance_index) idx: u32, @builtin(vertex_index) vIdx: u32) -> @builtin(position) vec4f {
@@ -48,7 +50,7 @@ fn computeMain(@builtin(global_invocation_id) global_id: vec3u) {
   let idx = global_id.x;
   
   if (idx < arrayLength(&particlesIn)) {
-    particlesOut[idx] = particlesIn[idx]
+    particlesOut[idx] = particlesIn[idx];
     
     // TOOD 7: Add boundary checking and respawn the particle when it is offscreen
   }
