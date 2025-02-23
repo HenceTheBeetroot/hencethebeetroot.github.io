@@ -71,6 +71,7 @@ async function init() {
 init().then( ret => {
   console.log(ret);
 }).catch( error => {
+  console.error(error);
   const pTag = document.createElement('p');
   pTag.innerHTML = navigator.userAgent + "</br>" + error.message;
   document.body.appendChild(pTag);
