@@ -35,7 +35,7 @@ struct Random {
 // name the binded variables particlesIn and particlesOut
 @group(0) @binding(0) var<storage> particlesIn: array<Particle>;
 @group(0) @binding(1) var<storage, read_write> particlesOut: array<Particle>;
-@group(1) @binding(0) var<uniform> time: f32;
+@group(1) @binding(0) var<storage> time: f32;
 
 @vertex
 fn vertexMain(@builtin(instance_index) idx: u32, @builtin(vertex_index) vIdx: u32) -> @builtin(position) vec4f {
@@ -82,5 +82,5 @@ fn computeMain(@builtin(global_invocation_id) global_id: vec3u) {
 }
 
 fn rand() -> f32 {
-  return fract(sin(time[0]) * 43758.5453); //FIXME
+  return fract(sin(time) * 43758.5453); //FIXME
 }
