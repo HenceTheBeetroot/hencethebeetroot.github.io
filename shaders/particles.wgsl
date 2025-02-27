@@ -64,23 +64,31 @@ fn computeMain(@builtin(global_invocation_id) global_id: vec3u) {
     particlesOut[idx].position[0] += particlesOut[idx].velocity[0];
     particlesOut[idx].position[1] += particlesOut[idx].velocity[1];
 
-    // Add boundary checking and respawn the particle when it is offscreen
-    //if (particlesOut[idx].position[0] > 1 || particlesOut[idx].position[0] < -1) {
-    //  particlesOut[idx].position[0] = (particlesOut[idx].position[0] + 1) % 2 - 1;
-    //}
-    //if (particlesOut[idx].position[1] > 1 || particlesOut[idx].position[1] < -1) {
-    //  particlesOut[idx].position[1] = (particlesOut[idx].position[1] + 1) % 2 - 1;
-    //}
     if (particlesOut[idx].position[0] > 1 || particlesOut[idx].position[0] < -1 || particlesOut[idx].position[1] > 1 || particlesOut[idx].position[1] < -1) {
+      // Initial velocity
       particlesOut[idx].velocity = vec2f(
-        rand(),
-        0.01
+        ((2 * rand(particlesOut[idx].position[0])) - 1) * 0.03,
+        0.01 + (rand(particlesOut[idx].position[1])) * 0.01
       );
-      particlesOut[idx].position = vec2f(0, -1);
+      // Reposition particle
+      particlesOut[idx].position = vec2f(
+        ((2 * rand(particlesOut[idx].velocity[0])) - 1) * 0.3,
+        -1
+      );
+    } else {
+      // Update velocity
+      particlesOut[idx].velocity = vec2f(
+        (particlesOut[idx].velocity[0] - (sign(particlesOut[idx].position[0]) / 400)) * 0.99,
+        particlesOut[idx].velocity[1] * 1.03
+      );
     }
   }
 }
 
-fn rand() -> f32 {
-  return fract(sin(time) * 43758.5453); //FIXME
+fn rand(off: f32) -> f32 {
+  return fract((sin(time) + off) * 43758.5453); //FIXME
+}
+
+fn boundedRand(lower: f32, upper: f32, off: f32) -> f32 {
+  return (upper - lower) * rand(off) + lower;
 }
