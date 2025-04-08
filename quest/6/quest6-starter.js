@@ -30,63 +30,94 @@ import RayTracer from '/lib/Viz/RayTracer.js'
 import StandardTextObject from '/lib/DSViz/StandardTextObject.js'
 import RayTracingBoxObject from '/lib/DSViz/RayTracingBoxObject.js'
 import Camera from '/lib/Viz/3DCamera.js'
-import MoonRender from '/lib/Moonfall/MoonRenderer.js'
-import { Point, Line } from '/lib/Moonfall/Moon3DObject.js'
+import MoonSceneRender from '/lib/Moonfall/MoonSceneRenderer.js'
+import { Point, MoonObject } from '/lib/Moonfall/Moon3DObject.js'
+import { getName } from '/lib/Moonfall/General.js'
+import { Collection } from '/lib/Moonfall/Moon3DCollection.js'
+import analyzeSTL, { getModelName } from '/lib/Moonfall/AnalyzeSTL.js'
 
-async function init() {
-  let test1 = new Point(1, 2, 3);
-  console.log("point 1 created\n", test1);
-  let test2 = new Point.add(test1, 1);
-  console.log("point 2 created\n", test2);
-  let test3 = new Point();
-  console.log("point 3 created\n", test3);
-  let test4 = new Point(test3).add(test1);
-  console.log("point 4 created\n", test4);
-  // Create a canvas tag
-  const canvasTag = document.createElement('canvas');
-  canvasTag.id = "renderCanvas";
-  document.body.appendChild(canvasTag);
-  // Create a ray tracer
-  const tracer = new RayTracer(canvasTag);
-  await tracer.init();
-  // Create a 3D Camera
-  var camera = new Camera();
-  // Create an object to trace
-  var tracerObj = new RayTracingBoxObject(tracer._device, tracer._canvasFormat, camera);
-  await tracer.setTracerObject(tracerObj);
-  
-  let fps = '??';
-  var fpsText = new StandardTextObject('fps: ' + fps);
-  
-  // run animation at 60 fps
-  var frameCnt = 0;
-  var tgtFPS = 60;
-  var secPerFrame = 1. / tgtFPS;
-  var frameInterval = secPerFrame * 1000;
-  var lastCalled;
-  let renderFrame = () => {
-    let elapsed = Date.now() - lastCalled;
-    if (elapsed > frameInterval) {
-      ++frameCnt;
-      lastCalled = Date.now() - (elapsed % frameInterval);
-      tracer.render();
-    }
-    requestAnimationFrame(renderFrame);
-  };
-  lastCalled = Date.now();
-  renderFrame();
-  setInterval(() => { 
-    fpsText.updateText('fps: ' + frameCnt);
-    frameCnt = 0;
-  }, 1000); // call every 1000 ms
-  return tracer;
+var objectPaths = [
+  '/assets/STL/ascii/cube.stl',
+  //'/assets/STL/ascii/blender_monkey.stl'
+]
+
+var collection = new Collection("WORLD")
+
+let p = document.createElement('p')
+document.body.appendChild(p)
+for (let path of objectPaths) {
+  console.log("Loading", path)
+  p.innerHTML = "Importing \"" + getModelName(path) + "\" from " + path + " ..."
+  let object = await analyzeSTL(path)
+  console.log("Created object", object)
+  collection.appendData(object)
+  console.log("Loaded!")
 }
+console.log(collection)
+document.body.removeChild(p)
 
-init().then( ret => {
-  console.log(ret);
-}).catch( error => {
-  const pTag = document.createElement('p');
-  pTag.innerHTML = navigator.userAgent + "</br>" + error.message;
-  document.body.appendChild(pTag);
-  document.getElementById("renderCanvas").remove();
-});
+let renderer = new MoonSceneRender()
+renderer.addToScene(collection)
+
+renderer.init()
+
+// async function init() {
+//   if (!navigator.gpu) {
+//     throw Error("WebGPU is not supported in this browser.")
+//   }
+
+//   const adapter = await navigator.gpu.requestAdapter()
+//   if (!adapter) {
+//     throw Error("Failed to request adapter.")
+//   }
+
+//   const device = await adapter.requestDevice()
+
+//   // Create a canvas tag
+//   const canvasTag = document.createElement('canvas');
+//   canvasTag.id = "renderCanvas";
+//   document.body.appendChild(canvasTag);
+//   // Create a ray tracer
+//   const tracer = new RayTracer(canvasTag);
+//   await tracer.init();
+//   // Create a 3D Camera
+//   var camera = new Camera();
+//   // Create an object to trace
+//   var tracerObj = new RayTracingBoxObject(tracer._device, tracer._canvasFormat, camera);
+//   await tracer.setTracerObject(tracerObj);
+  
+//   let fps = '??';
+//   var fpsText = new StandardTextObject('fps: ' + fps);
+  
+//   // run animation at 60 fps
+//   var frameCnt = 0;
+//   var tgtFPS = 60;
+//   var secPerFrame = 1. / tgtFPS;
+//   var frameInterval = secPerFrame * 1000;
+//   var lastCalled;
+//   let renderFrame = () => {
+//     let elapsed = Date.now() - lastCalled;
+//     if (elapsed > frameInterval) {
+//       ++frameCnt;
+//       lastCalled = Date.now() - (elapsed % frameInterval);
+//       tracer.render();
+//     }
+//     requestAnimationFrame(renderFrame);
+//   };
+//   lastCalled = Date.now();
+//   renderFrame();
+//   setInterval(() => { 
+//     fpsText.updateText('fps: ' + frameCnt);
+//     frameCnt = 0;
+//   }, 1000); // call every 1000 ms
+//   return tracer;
+// }
+
+// init().then( ret => {
+//   console.log(ret);
+// }).catch( error => {
+//   const pTag = document.createElement('p');
+//   pTag.innerHTML = navigator.userAgent + "</br>" + error.message;
+//   document.body.appendChild(pTag);
+//   document.getElementById("renderCanvas").remove();
+// });
