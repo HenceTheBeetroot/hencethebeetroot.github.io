@@ -34,8 +34,20 @@ import PGA2D from '/lib/Math/PGA2D.js'
 import Standard2DPGACameraSceneObject from '/lib/DSViz/Standard2DPGACameraSceneObject.js'
 
 async function init() {
+  console.log(`Controls:
+    w/a/s/d: move up/left/right/down
+    q/e: zoom in/out
+    f: show/hide FPS
+    r: reset pose to default
+    i/o: increase/decrease FPS by 1 (+ shift: by 5)
+    p: pause simulation`)
+  var tgtFPS = 60;
+  var secPerFrame = 1. / tgtFPS;
+  var frameInterval = secPerFrame * 1000;
+  
   // Create a canvas tag
   const canvasTag = document.createElement('canvas');
+  const keysPressed = new Set();
   canvasTag.id = "renderCanvas";
   document.body.appendChild(canvasTag);
   // Create a 2d animated renderer
@@ -43,71 +55,141 @@ async function init() {
   await renderer.init();
   var vertices = new Float32Array([
      // x, y
-     -0.5, -0.5,
-     0.5, -0.5,
-     0.5,  0.5,
-     -0.5, 0.5, 
-     -0.5, -0.5 // loop back to the first vertex
+     -0.9, -0.9,
+      0.9, -0.9,
+      0.9,  0.9,
+     -0.9,  0.9, 
+     -0.9, -0.9 // loop back to the first vertex
   ]);
   const camera = new Camera();
   const grid = new CameraLineStrip2DAliveDeadObject(renderer._device, renderer._canvasFormat, camera._pose, vertices);
+  let numCells = grid._numCells;
+  const nx = numCells.x;
+  const ny = numCells.y;
   await renderer.appendSceneObject(grid);
   // Add a movable colored quad
   var pose = new Float32Array([1, 0, 0, 0, 0.025, 0.025]);
-  var quadVertices = new Float32Array([
-     // x, y, r, g, b, a
-     -1, -1, 1, 0, 0, 1,
-     1, -1, 0, 1, 0, 1,
-     -1, 1, 0, 0, 1, 1,
-     1, 1, 1, 0, 1, 1,
-     -1, 1, 0, 0, 1, 1,
-     1, -1, 0, 1, 0, 1
-  ]);
-  const quad = new Standard2DPGACameraSceneObject(renderer._device, renderer._canvasFormat, camera._pose, quadVertices, pose);
-  await renderer.appendSceneObject(quad);
-  let fps = '??';
-  var fpsText = new StandardTextObject('fps: ' + fps);
+  // var quadVertices = new Float32Array([
+  //    // x, y, r, g, b, a
+  //    -1, -1, 1, 0, 0, 1,
+  //     1, -1, 0, 1, 0, 1,
+  //    -1,  1, 0, 0, 1, 1,
+  //     1,  1, 1, 0, 1, 1,
+  //    -1,  1, 0, 0, 1, 1,
+  //     1, -1, 0, 1, 0, 1
+  // ]);
+  // const quad = new Standard2DPGACameraSceneObject(renderer._device, renderer._canvasFormat, camera._pose, quadVertices, pose);
+  // await renderer.appendSceneObject(quad);
+  var fpsText = new StandardTextObject('fps: ## / ## (Paused)');
   // keyboard interaction
-  var movespeed = 0.05;
-  window.addEventListener("keydown", (e) => {
+  var movespeed = 0.5;
+
+  const updateTgtFPS = (val) => {
+    tgtFPS += val;
+    secPerFrame = 1. / tgtFPS;
+    frameInterval = secPerFrame * 1000;
+  }
+  
+  // two types of keys:
+  // "instants" - keys that simply do something when pressed
+  // "perpetuals" - keys that continue affecting the scene until released
+  
+  window.addEventListener('keydown', (e) => {
+    // initiate any perpetuals
+    keysPressed.add(e.key);
+    // handle any instants
     switch (e.key) {
-      case 'ArrowUp': case 'w': case 'W':
-        camera.moveUp(movespeed);
+      case 'f': case 'F':
+        fpsText.toggleVisibility();
+        break;
+      case 'r': case 'R':
+        camera.resetPose();
         grid.updateCameraPose();
-        quad.updateCameraPose();
+        // quad.updateCameraPose();
         break;
-      case 'ArrowDown': case 's': case 'S':   
-        camera.moveDown(movespeed);
-        grid.updateCameraPose();     
-        quad.updateCameraPose();
+      case 'i':
+        if (Math.abs(tgtFPS) < 100) updateTgtFPS(1 * Math.sign(tgtFPS));
         break;
-      case 'ArrowLeft': case 'a': case 'A':  
-        camera.moveLeft(movespeed);
-        grid.updateCameraPose();
-        quad.updateCameraPose();
+      case 'I':
+        if (Math.abs(tgtFPS) < 96) updateTgtFPS(5 * Math.sign(tgtFPS));
         break;
-      case 'ArrowRight': case 'd': case 'D': 
-        camera.moveRight(movespeed);
-        grid.updateCameraPose();    
-        quad.updateCameraPose();        
+      case 'o':
+        if (Math.abs(tgtFPS) > 1) updateTgtFPS(-1 * Math.sign(tgtFPS));
         break;
-      case 'q': case 'Q':  
-        camera.zoomIn();
-        grid.updateCameraPose();    
-        quad.updateCameraPose();        
+      case 'O':
+        if (Math.abs(tgtFPS) > 5) updateTgtFPS(-5 * Math.sign(tgtFPS));
         break;
-      case 'e': case 'E':
-        camera.zoomOut();
-        grid.updateCameraPose();  
-        quad.updateCameraPose();
-        break;
-      case 'f': case 'F': fpsText.toggleVisibility(); break;
+      case ' ': case 'p': case 'P':
+        tgtFPS *= -1;
+        grid._dataArray[4] *= -1;
+        grid._device.queue.writeBuffer(grid._dataBuffer, 0, grid._dataArray);
     }
   });
+
+  // this function appropriately disables untoggled perpetuals...
+  window.addEventListener('keyup', (e) => keysPressed.delete(e.key));
+
+  // ...and this one handles perpetual functionality
+  const keyboardInputUpdate = (fps) => {
+    let zoom = Math.sqrt(camera._pose[4] ** 2 + camera._pose[5] ** 2);
+    for (let key of keysPressed) {
+      switch (key) {
+        case 'ArrowUp': case 'w': case 'W':
+          camera.moveUp(movespeed * 2 / fps / zoom);
+          grid.updateCameraPose();
+          // quad.updateCameraPose();
+          break;
+        case 'ArrowDown': case 's': case 'S':   
+          camera.moveDown(movespeed * 2 / fps / zoom);
+          grid.updateCameraPose();
+          // quad.updateCameraPose();
+          break;
+        case 'ArrowLeft': case 'a': case 'A':  
+          camera.moveLeft(movespeed * 2 / fps / zoom);
+          grid.updateCameraPose();
+          // quad.updateCameraPose();
+          break;
+        case 'ArrowRight': case 'd': case 'D': 
+          camera.moveRight(movespeed * 2 / fps / zoom);
+          grid.updateCameraPose();
+          // quad.updateCameraPose();
+          break;
+        case 'q': case 'Q':
+          camera.zoom(1 - (movespeed * 2 / fps));
+          grid.updateCameraPose();
+          // quad.updateCameraPose();
+          break;
+        case 'e': case 'E':
+          camera.zoom(1 + (movespeed * 2 / fps));
+          grid.updateCameraPose();
+          // quad.updateCameraPose();
+          break;
+      }
+    };
+  }
+
+  const mouseInputUpdate = () => {
+    if (mouseHeld) {
+      if (inCell && (grid._dataArray[2] == inCell.x || grid._dataArray[3] == inCell.y)) {
+        grid._dataArray[2] = -1;
+        grid._dataArray[3] = -1;
+        grid._device.queue.writeBuffer(grid._dataBuffer, 0, grid._dataArray);
+      }
+    }
+  }
+  
   // mouse interactions
   let isDragging = false;
+  let inCell = null;
   let oldP = [0, 0];
+  let mouseHeld = false;
   canvasTag.addEventListener('mousedown', (e) => {
+    mouseHeld = true;
+    if (inCell != null) {
+      grid._dataArray[2] = inCell.x;
+      grid._dataArray[3] = inCell.y;
+      grid._device.queue.writeBuffer(grid._dataBuffer, 0, grid._dataArray);
+    }
     var mouseX = (e.clientX / window.innerWidth) * 2 - 1;
     var mouseY = (-e.clientY / window.innerHeight) * 2 + 1;
     mouseX /= camera._pose[4];
@@ -129,14 +211,13 @@ async function init() {
     let p = PGA2D.applyMotorToPoint([mouseX, mouseY], [camera._pose[0], camera._pose[1], camera._pose[2], camera._pose[3]]);
     let halfLength = 1; // half cell length
     let cellLength = halfLength * 2; // full cell length
-    let u = Math.floor((p[0] + halfLength) / cellLength * 10);
-    let v = Math.floor((p[1] + halfLength) / cellLength * 10);
-    if (u >= 0 && u < 10 && v >= 0 && v < 10) {
-      let offsetX = - halfLength + u / 10 * cellLength + cellLength / 10 * 0.5;
-      let offsetY = - halfLength + v / 10 * cellLength + cellLength / 10 * 0.5;
-      if (-0.5 / 10 + offsetX <= p[0] && p[0] <= 0.5 / 10 + offsetX && -0.5 / 10 + offsetY <= p[1] && p[1] <= 0.5 / 10 + offsetY) {
-        console.log(`in cell (${u}, ${v})`);
-      }
+    let u = Math.floor((p[0] + halfLength) / cellLength * nx);  
+    let v = Math.floor((p[1] + halfLength) / cellLength * ny);
+    if (u >= 0 && u < nx && v >= 0 && v < ny) {
+        inCell = {x: u, y: v};
+        //console.log(`in cell (${u}, ${v}) (${grid._cellStatus[inCell.y * nx + inCell.x]})`);
+    } else {
+      inCell = null;
     }
     if (isDragging) {
       let diff = Math.sqrt(Math.pow(p[0] - oldP[0], 2) + Math.pow(p[1] - oldP[1], 2));
@@ -153,15 +234,17 @@ async function init() {
     }
   });
   canvasTag.addEventListener('mouseup', (e) => {
+    mouseHeld = false;
     isDragging = false;
+    grid._dataArray[2] = -1;
+    grid._dataArray[3] = -1;
+    grid._device.queue.writeBuffer(grid._dataBuffer, 0, grid._dataArray);
   });
   // run animation at 60 fps
   var frameCnt = 0;
-  var tgtFPS = 60;
-  var secPerFrame = 1. / tgtFPS;
-  var frameInterval = secPerFrame * 1000;
   var lastCalled;
   let renderFrame = () => {
+    keyboardInputUpdate(tgtFPS);
     let elapsed = Date.now() - lastCalled;
     if (elapsed > frameInterval) {
       ++frameCnt;
@@ -169,11 +252,12 @@ async function init() {
       renderer.render();
     }
     requestAnimationFrame(renderFrame);
+    mouseInputUpdate();
   };
   lastCalled = Date.now();
   renderFrame();
   setInterval(() => { 
-    fpsText.updateText('fps: ' + frameCnt);
+    fpsText.updateText('fps: ' + frameCnt + ' / ' + Math.abs(tgtFPS) + ((tgtFPS < 0) ? ' (Paused)' : ''));
     frameCnt = 0;
   }, 1000); // call every 1000 ms
   return renderer;

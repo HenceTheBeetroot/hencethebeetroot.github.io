@@ -93,9 +93,46 @@ fn applyMotorToPoint(p: vec2f, m: MultiVector) -> vec2f {
   let new_p = applyMotor(createPoint(p), m);
   return extractPoint(new_p);
 }
+
+fn on(cell: u32, neighbors: u32) -> u32 {
+  return 1u;
+}
+
+fn preserve(cell: u32, neighbors: u32) -> u32 {
+  return cell;
+}
+
+fn blink(cell: u32, neighbors: u32) -> u32 {
+  return 1u - cell;
+}
+
+fn basic(cell: u32, neighbors: u32) -> u32 {
+  if ((cell + neighbors) % 2 == 1) {
+    return 1u;
+  }
+  return 0u;
+}
+
+fn conway(cell: u32, neighbors: u32) -> u32 {
+  if (cell == 0 && neighbors == 3) {
+    return 1u;
+  }
+  else if (cell == 1 && (neighbors < 2 || 3 < neighbors)) {
+    return 0u;
+  }
+  return cell;
+}
+
+struct Data {
+  n: vec2f,
+  writeCell: vec2f,
+  paused: f32
+}
+
 @group(0) @binding(0) var<uniform> camerapose: Pose;
 @group(0) @binding(1) var<storage> cellStatusIn: array<u32>;
 @group(0) @binding(2) var<storage, read_write> cellStatusOut: array<u32>;
+@group(0) @binding(3) var<uniform> data: Data;
 
 struct VertexOutput {
   @builtin(position) pos: vec4f,
@@ -104,13 +141,15 @@ struct VertexOutput {
 
 @vertex // this compute the scene coordinate of each input vertex
 fn vertexMain(@location(0) pos: vec2f, @builtin(instance_index) idx: u32) -> VertexOutput {
-  let u = idx % 10; // we are expecting 10x10, so modulo 10 to get the x index
-  let v = idx / 10; // divide by 10 to get the y index
-  let uv = vec2f(f32(u), f32(v)) / 10; // normalize the coordinates to [0, 1]
-  let halfLength = 1.f; // half length
-  let cellLength = halfLength * 2.f; // full length
-  let cell = pos / 10; // divide the input quad into 10x10 pieces
-  let offset = - halfLength + uv * cellLength + cellLength / 10 * 0.5; // compute the offset for the instance
+  let nx = data.n.x;
+  let ny = data.n.y;
+  let u = idx % u32(nx); // we are expecting x/y, so modulo x to get the x index
+  let v = idx / u32(nx); // divide by x to get the y index
+  let uv = vec2f(f32(u) / nx, f32(v) / ny); // normalize the coordinates to [0, 1]
+  let halfLength = 1.; // half length
+  let cellLength = halfLength * 2; // full length
+  let cell = pos / nx; // divide the input quad into pieces
+  let offset = -halfLength + uv * cellLength + vec2f(halfLength / nx, halfLength / ny);
   // Apply motor
   let transformed = applyMotorToPoint(cell + offset, reverse(camerapose.motor));
   // Apply scale
@@ -123,23 +162,59 @@ fn vertexMain(@location(0) pos: vec2f, @builtin(instance_index) idx: u32) -> Ver
 
 @fragment // this compute the color of each pixel
 fn fragmentMain(@location(0) cellStatus: f32) -> @location(0) vec4f {
-  return vec4f(238.f/255, 118.f/255, 35.f/255, 1) * cellStatus; // (R, G, B, A)
+  switch (i32(cellStatus)) {
+    case 0: {
+      return vec4f(16.f/255, 0.f/255, 16.f/255, 1);
+    }
+    case 1: {
+      return vec4f(192.f/255, 64.f/255, 192.f/255, 1); // (R, G, B, A)
+    }
+    default: {
+      return vec4f(0, 0, 0, 1);
+    }
+  }
 }
+
+var<private> lastWrite: vec2f = vec2f(0, 0);
 
 @compute
 @workgroup_size(4, 4)
 fn computeMain(@builtin(global_invocation_id) cell: vec3u) {
   // First count how many neighbors are alive
-  let x = cell.x;
-  let y = cell.y;
-  let neighborsAlive = cellStatusIn[(y) * 10 + (x + 1)] + cellStatusIn[(y) * 10 + (x - 1)] +
-                       cellStatusIn[(y + 1) * 10 + (x)] + cellStatusIn[(y - 1) * 10 + (x)];
-  let i = y * 10 + x;
-  // Compute new status  
-  if ((i + neighborsAlive) % 2 == 1) {
-    cellStatusOut[i] = 1;
+  let x: u32 = cell.x;
+  let y: u32 = cell.y;
+  let nx: u32 = u32(data.n.x);
+  let ny: u32 = u32(data.n.y);
+  let i = y * nx + x;
+
+  if (data.paused == -1) {
+    cellStatusOut[i] = cellStatusIn[i];
+  } else {
+    var cardinalNeighbors: u32 = 0;
+    if (x < nx) { cardinalNeighbors += cellStatusIn[(y) * nx + (x + 1)]; }
+    if (x > 0)  { cardinalNeighbors += cellStatusIn[(y) * nx + (x - 1)]; }
+    if (y < ny) { cardinalNeighbors += cellStatusIn[(y + 1) * nx + (x)]; }
+    if (y > 0)  { cardinalNeighbors += cellStatusIn[(y - 1) * nx + (x)]; }
+    
+    var diagonalNeighbors: u32 = 0;
+    if (x < nx && y < ny) { diagonalNeighbors += cellStatusIn[(y + 1) * nx + (x + 1)]; }
+    if (x > 0 && y > 0) { diagonalNeighbors += cellStatusIn[(y - 1) * nx + (x - 1)]; }
+    if (x > 0 && y < ny) { diagonalNeighbors += cellStatusIn[(y + 1) * nx + (x - 1)]; }
+    if (x < nx && y > 0) { diagonalNeighbors += cellStatusIn[(y - 1) * nx + (x + 1)]; }
+
+    var allNeighbors = cardinalNeighbors + diagonalNeighbors;
+
+    cellStatusOut[i] = conway(cellStatusIn[i], allNeighbors);
   }
-  else {
-    cellStatusOut[i] = 0;
+  
+  if (
+      // this cell is marked to change
+      (data.writeCell.x == f32(x) && data.writeCell.y == f32(y)) &&
+      // this cell is *newly* marked to change
+      (data.writeCell.x != lastWrite.x || data.writeCell.y != lastWrite.y)
+    ) {
+    cellStatusOut[i] = 1 - cellStatusOut[i];
+    lastWrite.x = data.writeCell.x;
+    lastWrite.y = data.writeCell.y;
   }
 }
