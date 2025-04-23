@@ -31,7 +31,6 @@ import Camera from '/lib/Viz/2DCamera.js'
 import CameraLineStrip2DAliveDeadObject from '/lib/DSViz/CameraLineStrip2DAliveDeadObject.js'
 import StandardTextObject from '/lib/DSViz/StandardTextObject.js'
 import PGA2D from '/lib/Math/PGA2D.js'
-import Standard2DPGACameraSceneObject from '/lib/DSViz/Standard2DPGACameraSceneObject.js'
 
 async function init() {
   console.log(`Controls:
@@ -39,8 +38,10 @@ async function init() {
     q/e: zoom in/out
     f: show/hide FPS
     r: reset pose to default
-    i/o: increase/decrease FPS by 1 (+ shift: by 5)
-    p: pause simulation`)
+    i/o: increase/decrease FPS by 1 ( +shift: by 5 )
+    p: pause simulation
+    g: randomize cells
+    c: clear cells`)
   var tgtFPS = 60;
   var secPerFrame = 1. / tgtFPS;
   var frameInterval = secPerFrame * 1000;
@@ -127,7 +128,14 @@ async function init() {
   });
 
   // this function appropriately disables untoggled perpetuals...
-  window.addEventListener('keyup', (e) => keysPressed.delete(e.key));
+  window.addEventListener('keyup', (e) => {
+    keysPressed.delete(e.key);
+    switch (e.key) {
+      case 'g': case 'G': case 'c': case 'C':
+        grid.killMods();
+        break;
+    }
+  });
 
   // ...and this one handles perpetual functionality
   const keyboardInputUpdate = (fps) => {
@@ -135,34 +143,40 @@ async function init() {
     for (let key of keysPressed) {
       switch (key) {
         case 'ArrowUp': case 'w': case 'W':
-          camera.moveUp(movespeed * 2 / fps / zoom);
+          camera.moveUp(movespeed * 2 / fps / zoom * Math.sign(tgtFPS));
           grid.updateCameraPose();
           // quad.updateCameraPose();
           break;
         case 'ArrowDown': case 's': case 'S':   
-          camera.moveDown(movespeed * 2 / fps / zoom);
+          camera.moveDown(movespeed * 2 / fps / zoom * Math.sign(tgtFPS));
           grid.updateCameraPose();
           // quad.updateCameraPose();
           break;
         case 'ArrowLeft': case 'a': case 'A':  
-          camera.moveLeft(movespeed * 2 / fps / zoom);
+          camera.moveLeft(movespeed * 2 / fps / zoom * Math.sign(tgtFPS));
           grid.updateCameraPose();
           // quad.updateCameraPose();
           break;
         case 'ArrowRight': case 'd': case 'D': 
-          camera.moveRight(movespeed * 2 / fps / zoom);
+          camera.moveRight(movespeed * 2 / fps / zoom * Math.sign(tgtFPS));
           grid.updateCameraPose();
           // quad.updateCameraPose();
           break;
         case 'q': case 'Q':
-          camera.zoom(1 - (movespeed * 2 / fps));
+          camera.zoom(1 - (movespeed * 2 / fps * Math.sign(tgtFPS)));
           grid.updateCameraPose();
           // quad.updateCameraPose();
           break;
         case 'e': case 'E':
-          camera.zoom(1 + (movespeed * 2 / fps));
+          camera.zoom(1 + (movespeed * 2 / fps * Math.sign(tgtFPS)));
           grid.updateCameraPose();
           // quad.updateCameraPose();
+          break;
+        case 'g': case 'G':
+          grid.randomMod();
+          break;
+        case 'c': case 'C':
+          grid.clearMod();
           break;
       }
     };

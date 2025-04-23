@@ -126,7 +126,8 @@ fn conway(cell: u32, neighbors: u32) -> u32 {
 struct Data {
   n: vec2f,
   writeCell: vec2f,
-  paused: f32
+  paused: f32,
+  randomize: f32
 }
 
 @group(0) @binding(0) var<uniform> camerapose: Pose;
@@ -138,6 +139,10 @@ struct VertexOutput {
   @builtin(position) pos: vec4f,
   @location(0) cellStatus: f32 // pass the cell status
 };
+
+fn random(randomVal: f32, offset: vec2f) -> f32 {
+  return fract(sin(dot(offset * vec2(0.0036, 0.085), vec2(12.9898, 78.233))) * 43758.5453 / (abs(randomVal) + 1));
+}
 
 @vertex // this compute the scene coordinate of each input vertex
 fn vertexMain(@location(0) pos: vec2f, @builtin(instance_index) idx: u32) -> VertexOutput {
@@ -187,8 +192,16 @@ fn computeMain(@builtin(global_invocation_id) cell: vec3u) {
   let ny: u32 = u32(data.n.y);
   let i = y * nx + x;
 
-  if (data.paused == -1) {
+  // randomize cells
+  if (data.randomize > 0) {
+    cellStatusOut[i] = u32(random(data.randomize, vec2f(f32(cell.x), f32(cell.y))) * 2);
+  // clear cells
+  } else if (data.randomize == -1) {
+    cellStatusOut[i] = 0;
+  // do not follow rules if paused
+  } else if (data.paused == -1) {
     cellStatusOut[i] = cellStatusIn[i];
+  // follow rules
   } else {
     var cardinalNeighbors: u32 = 0;
     if (x < nx) { cardinalNeighbors += cellStatusIn[(y) * nx + (x + 1)]; }
@@ -207,6 +220,7 @@ fn computeMain(@builtin(global_invocation_id) cell: vec3u) {
     cellStatusOut[i] = conway(cellStatusIn[i], allNeighbors);
   }
   
+  // respond to user input
   if (
       // this cell is marked to change
       (data.writeCell.x == f32(x) && data.writeCell.y == f32(y)) &&
