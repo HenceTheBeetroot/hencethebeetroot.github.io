@@ -28,7 +28,9 @@
 
 import Renderer from '/lib/Viz/2DRenderer.js'
 import PolygonObject from '/lib/DSViz/PolygonObject.js'
+import Polygon from '/lib/DS/Polygon.js'
 import StandardTextObject from '/lib/DSViz/StandardTextObject.js'
+import DataObject from '/lib/Moonfall/Manager/DataObject.js';
 
 async function init() {
   // Create a canvas tag
@@ -38,8 +40,22 @@ async function init() {
   // Create a 2d animated renderer
   const renderer = new Renderer(canvasTag);
   await renderer.init();
-  const polygon = new PolygonObject(renderer._device, renderer._canvasFormat, '/assets/box.polygon');
-  await renderer.appendSceneObject(polygon);
+  //const polygon = new PolygonObject(renderer._device, renderer._canvasFormat, '/assets/box.polygon');
+  const polygonObject = new Polygon('/assets/circle.polygon');
+  await polygonObject.init();
+  console.log(polygonObject);
+  const points = polygonObject._polygon;
+  const data = new DataObject("dataObject");
+  data.setDevice(renderer._device)
+    .setCanvasFormat(renderer._canvasFormat)
+    .setShaderPath("/shaders/standard2d.wgsl")
+
+    .startDataBind(points.flat())
+    .setWritable(true)
+    .setDrawing(true)
+    .commitDataBind();
+  
+  await renderer.appendSceneObject(data);
   let fps = '??';
   var fpsText = new StandardTextObject('fps: ' + fps);
   
@@ -74,4 +90,5 @@ init().then( ret => {
   pTag.innerHTML = navigator.userAgent + "</br>" + error.message;
   document.body.appendChild(pTag);
   document.getElementById("renderCanvas").remove();
+  console.error(error);
 });
