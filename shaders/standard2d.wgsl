@@ -21,18 +21,13 @@
  *                                anything the license permits.
  */
 
-// struct GenericData {
-//   @location(0) value: f32,
-//   @location(1) other: f32,
-//   @location(2) nine: f32,
-// }
-
-@group(0) @binding(0) var<storage, read> verticesIn: array<vec2f>;
-@group(0) @binding(1) var<storage, read_write> verticesOut: array<vec2f>;
+@group(0) @binding(0) var<storage> dataIn: array<vec2f>;
+@group(0) @binding(1) var<storage, read_write> dataOut: array<vec2f>;
+@group(1) @binding(0) var<storage> offset: array<u32>;
 
 @vertex // this computes the scene coordinate of each input vertex
-fn vertexMain(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4f {
-  return vec4f(verticesIn[idx], 0, 1); // (pos, Z, W) = (X, Y, Z, W)
+fn vertexMain(@builtin(vertex_index) vertex_id: u32) -> @builtin(position) vec4f {
+  return vec4f(dataIn[vertex_id + offset[0]], 0, 1); // (pos, Z, W) = (X, Y, Z, W)
 }
 
 @fragment // this computes the color of each pixel
@@ -42,7 +37,10 @@ fn fragmentMain() -> @location(0) vec4f {
 
 @compute @workgroup_size(256)
 fn computeMain(@builtin(global_invocation_id) global_id: vec3u) {
-  let idx = global_id.x;
-  var v = verticesIn[idx];
-  verticesOut[idx] = v;
+  let pointsOffset = 548865u;
+
+  let idx = global_id.x + offset[0];
+  var v = dataIn[idx];
+
+  dataOut[idx] = v;
 }

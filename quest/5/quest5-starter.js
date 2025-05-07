@@ -41,23 +41,49 @@ async function init() {
   const renderer = new Renderer(canvasTag);
   await renderer.init();
   //const polygon = new PolygonObject(renderer._device, renderer._canvasFormat, '/assets/box.polygon');
-  const polygonObject = new Polygon('/assets/circle.polygon');
+  const polygonObject = new Polygon('/assets/dense.polygon');
   await polygonObject.init();
   console.log(polygonObject);
   const points = polygonObject._polygon;
+  const lines = points.map((val, idx) =>
+    Math.sqrt((points[(idx + 1) % points.length][0] - val[0]) ** 2 + (points[(idx + 1) % points.length][1] - val[1]) ** 2)
+  );
+  // points.map((val, idx) => Math.sqrt(
+  //   (points[idx % points.length][0] - val[0]) ** 2 + (points[idx % points.length][1] - val[1]) ** 2
+  // ));
   const data = new DataObject("dataObject");
   data.setDevice(renderer._device)
     .setCanvasFormat(renderer._canvasFormat)
     .setShaderPath("/shaders/standard2d.wgsl")
 
+    .startDataBind(lines)
+    .setDynamic(false)
+    .setDrawing(false)
+    .commitDataBind()
+
     .startDataBind(points.flat())
-    .setWritable(true)
+    .setDynamic(true)
     .setDrawing(true)
     .commitDataBind();
   
   await renderer.appendSceneObject(data);
-  let fps = '??';
-  var fpsText = new StandardTextObject('fps: ' + fps);
+  var infoText = new StandardTextObject('fps: ???\nOutside');
+  var isInside = false;
+
+  canvasTag.addEventListener('mousemove', (e) => {
+    var mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+    var mouseY = (-e.clientY / window.innerHeight) * 2 + 1;
+
+    var crosses = 0;
+    points.forEach((point, idx) => {
+      let next = points[(idx + 1) % points.length];
+      if (
+        Math.sign(point[1] - mouseY) != Math.sign(next[1] - mouseY) && // cast ray to the right and check for intersection
+        (point[0] + next[0]) / 2 > mouseX
+      ) crosses++;
+    })
+    isInside = crosses % 2 == 1;
+  });
   
   // run animation at 60 fps
   var frameCnt = 0;
@@ -77,7 +103,7 @@ async function init() {
   lastCalled = Date.now();
   renderFrame();
   setInterval(() => { 
-    fpsText.updateText('fps: ' + frameCnt);
+    infoText.updateText(`fps: ${frameCnt}\n${isInside?"Inside":"Outside"}`);
     frameCnt = 0;
   }, 1000); // call every 1000 ms
   return renderer;
