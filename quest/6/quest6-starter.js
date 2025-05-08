@@ -187,7 +187,7 @@ async function init() {
     '\n[ Space/Shift ] Boom up/down' +
     '\n\n[ I/K ] Tilt up/down' +
     '\n[ J/L ] Pan left/right' +
-    '\n[ U/O ] Roll clockwise/counterclockwise' +
+    '\n[ O/U ] Roll clockwise/counterclockwise' +
     '\n\n[ E/Q ] FOV in/out'
     : "")
     fpsText.updateTextRegion(text);
@@ -204,4 +204,5 @@ init().then( ret => {
   pTag.innerHTML = navigator.userAgent + "</br>" + error.message;
   document.body.appendChild(pTag);
   document.getElementById("renderCanvas").remove();
-});
+});("renderCanvas").remove();
+// });
