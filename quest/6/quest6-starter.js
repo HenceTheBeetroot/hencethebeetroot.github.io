@@ -204,5 +204,4 @@ init().then( ret => {
   pTag.innerHTML = navigator.userAgent + "</br>" + error.message;
   document.body.appendChild(pTag);
   document.getElementById("renderCanvas").remove();
-});("renderCanvas").remove();
-// });
+});
