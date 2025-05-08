@@ -69,7 +69,22 @@ async function init() {
         tracerObj.updateCameraFocal();
         break;
       case 'p': case 'P':
-        camera._isProjective = !camera._isProjective;
+        switch (camera._mode) {
+          case "orthogonal":
+            camera._mode = "projective";
+            break;
+          case "projective":
+            camera._mode = "fisheye";
+            camera._isProjective = true;
+            break;
+          case "fisheye":
+            camera._mode = "orthogonal";
+            camera._isProjective = false;
+            break;
+          default:
+            camera._mode = "projective";
+            break;
+        }
         tracerObj.updateCameraPose();
         break;
       case 'g': case 'G':
@@ -179,7 +194,7 @@ async function init() {
     `\n[ F ] ${helpVisible? "Hide" : "Show"} controls` +
     (helpVisible?
     '\n[ R ] Reset view' +
-    `\n[ P ] Change view type (currently ${camera._isProjective? "projective" : "orthographic"})` +
+    `\n[ P ] Change view type (currently ${camera._mode? camera._mode : "orthogonal"})` +
     `\n[ G ] Move camera / object (currently ${camera._inverse? "object" : "camera"})` +
     `\n      (Uses light orange face as "front" and gray as "top")` +
     '\n\n[ W/S ] Dolly forward/backward' +

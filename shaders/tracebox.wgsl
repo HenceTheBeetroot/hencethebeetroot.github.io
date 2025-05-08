@@ -450,3 +450,38 @@ fn computeProjectiveMain(@builtin(global_invocation_id) global_id: vec3u) {
     assignColor(uv, hitInfo.x, i32(hitInfo.y));
   }
 }
+
+@compute
+@workgroup_size(16, 16)
+fn computeFisheyeMain(@builtin(global_invocation_id) global_id: vec3u) {
+  let uv = vec2i(global_id.xy);
+  let texDim = vec2i(textureDimensions(outTexture));
+  if (uv.x < texDim.x && uv.y < texDim.y) {
+    // device resolution
+    let res = cameraPose.res.xy;
+    // normalized coordinates
+    let ndc = ((vec2f(uv) + vec2f(0.5)) / res) * 2.0 - vec2f(1.0); // [-1,1] range
+
+    // Polar angle from center
+    let r = length(ndc);
+
+    let theta = r * radians(180.) / 2.0; // map [0,1] -> [0, pi/2]
+    let phi = atan2(ndc.y, ndc.x);
+
+    // raycast direction
+    var rdir = vec3f(
+      sin(theta) * cos(phi),
+      sin(theta) * sin(phi),
+      cos(theta)
+    );
+
+    // start point
+    var spt = vec3f(0.0, 0.0, 0.0); // origin
+
+    spt = transformPt(spt);
+    rdir = transformDir(rdir);
+
+    let hitInfo = rayBoxIntersection(spt, rdir);
+    assignColor(uv, hitInfo.x, i32(hitInfo.y));
+  }
+}
